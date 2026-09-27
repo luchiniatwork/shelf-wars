@@ -1,0 +1,10 @@
+{
+  "name": "finding-fit",
+  "version": "0.1.0",
+  "description": "A Pi package of expert board game design skills — from first idea to manufactured, crowdfunded, published game.",
+  "keywords": ["pi-package", "board-games", "game-design"],
+  "license": "MIT",
+  "pi": {
+    "skills": [".agents/skills"]
+  }
+}
