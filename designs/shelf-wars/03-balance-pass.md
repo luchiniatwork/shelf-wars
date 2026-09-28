@@ -114,9 +114,15 @@ leader (71–94%); production cost 1 helps the premium strategy (80–90%);
 raising price bands starves the discount strategy. All four rejected —
 keep v0.2 values.
 
-Iteration-2 verdicts, full 6Q game (see `06-sim-results-v0.2.md`): chip3
-3 → **4** (99% Spike over the long arc at 3); E-band 5–6 → **4–5** (Engine
-reaches parity: 45/50); trend premium +2 rejected (self-reinforcing);
-demand-volume boost rejected (eligibility is the choke, not volume);
-retaliation worth ~14pp to challengers — skip mechanical rubber-banding
-until human data.
+Iteration-2 verdicts, full 6Q game (see `06-sim-results-v0.2.md`, read its
+errata): chip3 3 → 4 was necessary but NOT sufficient (its 45/50 was a
+sim-script artifact); E-band 5–6 → **4–5** stands; trend premium +2
+rejected (self-reinforcing); demand-volume boost rejected (eligibility is
+the choke); retaliation worth ~14pp to challengers.
+
+Iteration-3 verdicts (see `07-sim-results-iter3.md`): the real lever is
+cash — **3rd chip = 4 actions + 6c** (knife-edge 5/6/7c = 86/63/0% Spike).
+Rejected: sale-cap, 5 attributes, E-wants-3, random trend, line upkeep,
+campaign-creates, prodcost 1 (×3), late inflation, start-cash 14.
+Deflation is structural (faucet ≈ cost floor); options: ×5 presentation
+scaling, demand-creation redesign (v0.5), or accept brutality.

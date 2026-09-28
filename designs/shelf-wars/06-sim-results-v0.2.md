@@ -1,5 +1,14 @@
 # 06 — Sim Results v0.2 (iteration 2: full game + retaliation)
 
+> **⚠ ERRATA (added 2026-09-28):** this iteration's headline config
+> (chip3 = 4 actions → Engine 45 / Spike 50) was contaminated by a bot-script
+> bug: Spike's script spent only 3 R&D actions, so its 3rd chip never
+> landed at chip3 = 4 — the measured "balance" was a crippled strategy, not
+> working knobs. The corrected lever (3rd chip = 4 actions **+ 6c cash**) and
+> all superseding conclusions are in `07-sim-results-iter3.md`. Still valid
+> here: persist adoption, retaliation-helps-challengers, trend-premium +1,
+> E-band 4–5 direction, the economy-leak analysis, and the Discounter autopsy.
+
 Date: 2026-09-28 · Sim: `sim/shelf_wars_sim.py` (iteration 2) · 500 runs/config
 What changed vs iteration 1: v0.2 rules by default (chip3 = 3 actions, persist),
 **full 6-quarter game** (57 customers, curve 5/7/9/11/12/13), and
@@ -72,10 +81,10 @@ leader-bumps ~9.7/game (churn economy confirmed), nudges ~1.2/game
 - Bankruptcy: scrap-for-1c is the leading candidate floor; sim shows it
   doesn't distort balance either way.
 
-## Proposed v0.3 numbers (adopted in `rules-v0.3.md`)
+## ~~Proposed v0.3 numbers~~ (superseded — see errata)
 
-3rd chip = **4 actions** · E-band = **4–5** · everything else as v0.2
-(ads 1c, production 2c, B 2–3 / M 3–5, persist, retaliation-friendly rules).
+3rd chip = 4 actions was under-protective; v0.4 corrects to **4 actions +
+6c cash**. E-band 4–5 stands.
 
 ## Limitations
 

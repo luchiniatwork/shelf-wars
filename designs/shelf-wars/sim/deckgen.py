@@ -18,7 +18,7 @@ import random
 SEED = 20260928
 ATTRS = ["A", "B", "C", "D"]
 PAIRS = ["AB", "AC", "AD", "BC", "BD", "CD"]
-PRICE_BAND = {"B": [2, 3], "M": [3, 4, 5], "E": [4, 5]}  # v0.3: E-band 4-5 (was 5-6)
+PRICE_BAND = {"B": [2, 3], "M": [3, 4, 5], "E": [4, 5], "C": [4]}  # v0.3: E 4-5; C = Corporate (4p)
 
 COMP_4Q = [(1, "B", 2), (1, "M", 2), (1, "E", 1),
            (2, "B", 3), (2, "M", 3), (2, "E", 1),
@@ -27,6 +27,14 @@ COMP_4Q = [(1, "B", 2), (1, "M", 2), (1, "E", 1),
 
 COMP_6Q = COMP_4Q + [(5, "B", 5), (5, "M", 5), (5, "E", 2),
                      (6, "B", 5), (6, "M", 5), (6, "E", 3)]
+
+# 4p full game: 7/9/12/15/16/17 = 76 customers; Corporate (C) = 1-want, max 4.
+COMP_6Q_4P = [(1, "B", 2), (1, "M", 2), (1, "E", 1), (1, "C", 2),
+              (2, "B", 3), (2, "M", 3), (2, "E", 1), (2, "C", 2),
+              (3, "B", 4), (3, "M", 4), (3, "E", 2), (3, "C", 2),
+              (4, "B", 5), (4, "M", 5), (4, "E", 2), (4, "C", 3),
+              (5, "B", 5), (5, "M", 5), (5, "E", 3), (5, "C", 3),
+              (6, "B", 5), (6, "M", 6), (6, "E", 3), (6, "C", 3)]
 
 
 def build_deck(comp, seed):
@@ -76,6 +84,7 @@ def main():
     here = os.path.dirname(__file__)
     write_csv(build_deck(COMP_4Q, SEED), os.path.join(here, "..", "prototype", "customers-4q-v0.3.csv"))
     write_csv(build_deck(COMP_6Q, SEED + 1), os.path.join(here, "..", "prototype", "customers-full-3p-v0.3.csv"))
+    write_csv(build_deck(COMP_6Q_4P, SEED + 2), os.path.join(here, "..", "prototype", "customers-full-4p-v0.3.csv"))
 
 
 if __name__ == "__main__":
