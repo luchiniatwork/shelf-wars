@@ -1,70 +1,82 @@
 #!/usr/bin/env python3
-"""Shelf Wars v0.1 — customer deck generator (source of truth for the prototype).
+"""Shelf Wars — customer deck generator (source of truth for physical builds).
 
-Composition per designs/shelf-wars/04-stage1-prototype.md (3-seat, 4-quarter
-compressed game, 32 cards). Seeded + deterministic so the physical build and
-the Monte Carlo sim use identical cards.
+Outputs (seeded, deterministic):
+- prototype/customers-v0.1.csv        : 32 cards, 4-quarter compressed sim deck
+- prototype/customers-full-3p-v0.2.csv: 57 cards, full 6-quarter 3p deck (v0.2)
 
 Constraints encoded:
 - Budget customers want 1 attribute; Mainstream/Enthusiast want 2.
-- Single-wants split evenly across A/B/C/D (4/3/3/3 over 13 cards).
-- Double-wants cycle the 6 pairs; a pair repeats within a quarter only when
-  unavoidable (Q4 has 7 double-want cards > 6 pairs).
+- Single-wants split evenly across A/B/C/D; double-wants cycle the 6 pairs
+  (a pair repeats within a quarter only when unavoidable).
 - Max price bands: Budget 2-3, Mainstream 3-5, Enthusiast 5-6, round-robin.
 """
-import csv, itertools, os, random
+import csv
+import os
+import random
 
 SEED = 20260928
 ATTRS = ["A", "B", "C", "D"]
 PAIRS = ["AB", "AC", "AD", "BC", "BD", "CD"]
-PRICE_BAND = {"B": [2, 3], "M": [3, 4, 5], "E": [5, 6]}
+PRICE_BAND = {"B": [2, 3], "M": [3, 4, 5], "E": [4, 5]}  # v0.3: E-band 4-5 (was 5-6)
 
-# (quarter, segment, count) per 04-stage1-prototype.md
-COMP = [(1, "B", 2), (1, "M", 2), (1, "E", 1),
-        (2, "B", 3), (2, "M", 3), (2, "E", 1),
-        (3, "B", 4), (3, "M", 3), (3, "E", 2),
-        (4, "B", 4), (4, "M", 5), (4, "E", 2)]
+COMP_4Q = [(1, "B", 2), (1, "M", 2), (1, "E", 1),
+           (2, "B", 3), (2, "M", 3), (2, "E", 1),
+           (3, "B", 4), (3, "M", 3), (3, "E", 2),
+           (4, "B", 4), (4, "M", 5), (4, "E", 2)]
 
-def build_deck(seed=SEED):
+COMP_6Q = COMP_4Q + [(5, "B", 5), (5, "M", 5), (5, "E", 2),
+                     (6, "B", 5), (6, "M", 5), (6, "E", 3)]
+
+
+def build_deck(comp, seed):
     rng = random.Random(seed)
-    singles = list(itertools.islice(itertools.cycle(ATTRS), 13))  # A,B,C,D,A,B,...
+    n_singles = sum(c for _, s, c in comp if s == "B")
+    n_pairs = sum(c for _, s, c in comp if s != "B")
+    singles = [ATTRS[i % 4] for i in range(n_singles)]
     rng.shuffle(singles)
-    pairs = list(itertools.islice(itertools.cycle(PAIRS), 19))     # 19 double-wants
+    pairs = [PAIRS[i % 6] for i in range(n_pairs)]
     rng.shuffle(pairs)
-    single_i, pair_i = 0, 0
+    si = pi = 0
     cards, cid = [], 1
-    for quarter, seg, count in COMP:
+    for quarter, seg, count in comp:
         for _ in range(count):
             if seg == "B":
-                wants = singles[single_i]; single_i += 1
+                wants = singles[si]; si += 1
             else:
-                wants = pairs[pair_i]; pair_i += 1
+                wants = pairs[pi]; pi += 1
             price = PRICE_BAND[seg][(cid - 1) % len(PRICE_BAND[seg])]
             cards.append({"id": cid, "quarter": quarter, "segment": seg,
                           "wants": wants, "max_price": price})
             cid += 1
-    # Shuffle within each quarter pile (deal order is the row order).
-    for q in (1, 2, 3, 4):
+    quarters = sorted({q for q, _, _ in comp})
+    for q in quarters:
         pile = [c for c in cards if c["quarter"] == q]
         rng.shuffle(pile)
         cards = [c if c["quarter"] != q else pile.pop(0) for c in cards]
     return cards
 
-def main():
-    cards = build_deck()
-    out = os.path.join(os.path.dirname(__file__), "..", "prototype", "customers-v0.1.csv")
+
+def write_csv(cards, path):
     try:
-        os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "w", newline="") as f:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=["id", "quarter", "segment", "wants", "max_price"])
-            w.writeheader(); w.writerows(cards)
+            w.writeheader()
+            w.writerows(cards)
     except OSError as exc:
-        raise SystemExit(f"cannot write deck CSV at {out}: {exc}")
-    # Seed audit: attribute frequency on double-want cards (target >=45% each overall).
+        raise SystemExit(f"cannot write deck CSV at {path}: {exc}")
     doubles = [c for c in cards if len(c["wants"]) == 2]
     freq = {a: sum(1 for c in doubles if a in c["wants"]) / len(doubles) for a in ATTRS}
-    print(f"wrote {len(cards)} cards -> {os.path.relpath(out)}")
-    print("double-want attribute coverage:", {k: f"{v:.0%}" for k, v in freq.items()})
+    print(f"wrote {len(cards)} cards -> {os.path.relpath(path)} "
+          f"(double-want coverage: {', '.join(f'{k} {v:.0%}' for k, v in freq.items())})")
+
+
+def main():
+    here = os.path.dirname(__file__)
+    write_csv(build_deck(COMP_4Q, SEED), os.path.join(here, "..", "prototype", "customers-4q-v0.3.csv"))
+    write_csv(build_deck(COMP_6Q, SEED + 1), os.path.join(here, "..", "prototype", "customers-full-3p-v0.3.csv"))
+
 
 if __name__ == "__main__":
     main()

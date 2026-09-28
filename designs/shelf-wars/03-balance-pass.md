@@ -23,7 +23,7 @@ A competent action should be worth ~2–3 cash in expectation.
 |---|---|---|---|---|
 | Budget | 1 attribute | 2–3 | 0–1 | Volume floor; dumping (price 1 = −1) clears shelf |
 | Mainstream | 2 attributes | 3–5 | 1–3 | **The battleground** — most cards live here |
-| Enthusiast | 2 attributes | 5–6 | 3–4 | Low volume, high margin, R&D-gated |
+| Enthusiast | 2 attributes | 4–5 (v0.3; was 5–6) | 2–3 | Low volume, high margin, R&D-gated |
 | Corporate *(4p only)* | 1 attribute | 4 | 2 | Scaling pressure-valve, not a core system |
 
 **Trend premium: +1** over printed max for customers wanting the hot
@@ -39,9 +39,10 @@ number each.
 | 3 chips | 3/4 = 75% | 3/6 = 50% |
 
 The 3rd chip roughly **triples** Mainstream coverage — the strongest single
-upgrade in the game. Priced at 2 actions (compression premium). If
-Enthusiast dominance emerges anyway, tune the Enthusiast price band, not
-the rules.
+upgrade in the game, and (sim iteration 2) the only *permanent* asset in the
+funnel, so it compounds over the full arc. Priced at **4 actions** (v0.3;
+2 actions = 80% bot dominance, 3 = 99% over 6 quarters). The Enthusiast
+band carried the rest of the fix (5–6 → 4–5).
 
 ## 4. Demand deck = clock + scarcity engine
 
@@ -112,3 +113,10 @@ dominant strategy (80% bot win rate); ad cost 0 unleashes the coverage
 leader (71–94%); production cost 1 helps the premium strategy (80–90%);
 raising price bands starves the discount strategy. All four rejected —
 keep v0.2 values.
+
+Iteration-2 verdicts, full 6Q game (see `06-sim-results-v0.2.md`): chip3
+3 → **4** (99% Spike over the long arc at 3); E-band 5–6 → **4–5** (Engine
+reaches parity: 45/50); trend premium +2 rejected (self-reinforcing);
+demand-volume boost rejected (eligibility is the choke, not volume);
+retaliation worth ~14pp to challengers — skip mechanical rubber-banding
+until human data.
