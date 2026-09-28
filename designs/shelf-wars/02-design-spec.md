@@ -16,13 +16,14 @@ Core mechanism: **worker placement**. 1 core + 4 supporting systems
 4. **Income** — deterministic funnel resolution, segment by segment (ladder
    below). Players resolve their own sales simultaneously.
 5. **Upkeep** — unsold widgets stay on the shelf (they block next quarter's
-   production). No cash penalties, no depreciation bookkeeping.
+   production). Unsold customers persist one quarter, then discard (v0.2).
+   No cash penalties, no depreciation bookkeeping.
 
 ## The five action spaces
 
 | Space | Effect |
 |---|---|
-| **R&D** | Take an attribute chip / retool a product line (max 2 lines, 2–3 chips each; the 3rd chip costs 2 actions — compression premium) |
+| **R&D** | Take an attribute chip / retool a product line (max 2 lines, 2–3 chips each; the 3rd chip costs **3 actions** — sim-validated, see `05-sim-results-v0.1.md`) |
 | **Factory** | Produce up to capacity at 2c/widget **or** expand capacity +1 for 4c (start 2, max 5) |
 | **Marketing** | Place 2 ads (1c each) into segment ad slots |
 | **Campaign** | Place 1 ad **and** nudge the trend marker one step (Option B — see decision record) |

@@ -102,6 +102,13 @@ inside the euro band.
 ## 9. Full knob sheet
 
 Production cost **2** · capacity **2→5** / expand **4c** · shelf **6** ·
-ad cost **1** · ad slots **3** · trend premium **+1** · 3rd chip **2
-actions** · execs **3** (+1 at Q3) · start **10c** · quarter curve
-**5/7/9/11/12/13** · segment price bands · deck size per count **57/74**.
+ad cost **1** · ad slots **3** · trend premium **+1** · 3rd chip **3
+actions** (v0.2, sim-validated) · execs **3** (+1 at Q3) · start **10c** ·
+quarter curve **5/7/9/11/12/13** · segment price bands · deck size per
+count **57/74**.
+
+Sim verdicts (see `05-sim-results-v0.1.md`): 3rd chip at 2 actions was a
+dominant strategy (80% bot win rate); ad cost 0 unleashes the coverage
+leader (71–94%); production cost 1 helps the premium strategy (80–90%);
+raising price bands starves the discount strategy. All four rejected —
+keep v0.2 values.
