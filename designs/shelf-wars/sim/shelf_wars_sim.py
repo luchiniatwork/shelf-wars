@@ -30,11 +30,14 @@ EWANTS = 2        # knob: --ewants 2|3 (3 makes Enthusiast a true niche for 3-ch
 SALE_CAP = 0      # knob: --sale-cap N (max widgets one seller can sell per segment per quarter; 0=off)
 CHIP3_CASH = 0    # knob: --chip3-cash N (cash due when the 3rd chip completes; 0=free)
 LINE_UPKEEP = 0   # knob: --line-upkeep N (cash per product line per quarter at upkeep)
-CAMPAIGN_CREATES = 0  # knob: --campaign-creates N (Campaign adds N fresh customers to the row)
+CAMPAIGN_CREATES = 0  # knob: --campaign-creates N (Campaign creates N customers maturing NEXT quarter)
+CREATES_BIAS = 0      # knob: --creates-bias 1 (creator picks 1 want of created customers — self-serve robustness check)
+NUDGE = True          # knob: --nudge 0 (v0.5 proposal removes the trend nudge from Campaign)
 LATE_INFLATION = 0  # knob: --late-inflation N (Q5+ customers pay +N, capped at 6)
 TREND_START = "A"  # knob: --trend-start A|B|C|D|random
 PLAYERS = 3       # knob: --players 3|4 (4p adds the Corporate segment)
 SHELF_CAP = 6     # knob: --shelf
+NEAR_MISS = 0     # knob: --near-miss 1 (cover all-but-one want -> eligible at price <= max-1)
 
 
 def attrs():
@@ -43,7 +46,7 @@ def attrs():
 
 def pairs_list():
     return ["".join(p) for p in itertools.combinations(attrs(), 2)]
-AD_SLOTS = 3
+AD_SLOTS = 3      # knob: --ad-slots (4 relaxes the awareness gate, less churn)
 AD_COST = 1       # knob: --adcost (v0.1 finding: 0 unleashes the coverage leader)
 PROD_COST = 2     # knob: --prodcost (v0.1 finding: 1 helps the premium leader)
 EXPAND_COST = 4
@@ -88,6 +91,7 @@ class Customer:
         self.wants = set(row["wants"])
         self.max_price = int(row["max_price"])
         self.age = 0
+        self.creator = int(row.get("creator", -1))  # seat that created it via Campaign; -1 = dealt
 
 
 class Line:
@@ -214,14 +218,25 @@ def set_prices(seats, quarter, metrics):
             line.price = price
 
 
+def sale_eligible(line, cust, maxp):
+    """The funnel's price+coverage gate (ads handled separately)."""
+    if cust.wants <= line.chips and line.price <= maxp:
+        return True
+    if NEAR_MISS and len(cust.wants - line.chips) == 1 and line.price <= maxp - 1:
+        # --near-miss 1: any customer; 2: only 2+-want customers (preserves the attribute game)
+        if NEAR_MISS == 1 or len(cust.wants) >= 2:
+            return True
+    return False
+
+
 def segment_value(seat, seg, customers, trend):
     v = 0
     for c in customers:
         if c.segment != seg:
             continue
         maxp = c.max_price + (TREND_PREMIUM if trend[0] in c.wants else 0)
-        for l in seat.covers(c):
-            if l.price <= maxp:
+        for l in seat.lines:
+            if sale_eligible(l, c, maxp):
                 v += l.price - PROD_COST
                 break
     return v
@@ -286,7 +301,7 @@ def best_chip(line, customers, target_segs):
     return best_a
 
 
-def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metrics, execs):
+def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metrics, execs, pending, rng):
     third_chip_done = any(len(l.chips) >= 3 for l in seat.lines)
     has_two_lines = len(seat.lines) >= 2
     leader_idx = max((r for r in seats if r is not seat), key=lambda r: r.cash).idx
@@ -295,9 +310,9 @@ def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metric
     if seat.policy == "Discounter":
         acts = ["produce", "market", "market"]
         if 3 <= quarter <= 4:
-            acts.append("rd2" if not has_two_lines else "market")
+            acts = ["produce", "market", "campaign", "rd2" if not has_two_lines else "market"]
         elif quarter >= 5:
-            acts.append("market")
+            acts = ["produce", "campaign", "market", "market"]
     elif seat.policy == "Engine":
         if quarter == 1:
             acts = ["produce", "market", "market"]
@@ -305,10 +320,12 @@ def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metric
             acts = ["expand", "produce", "market"]
         elif quarter == 3:
             acts = ["produce", "expand", "market", "market"]
-        elif quarter in (4, 5):
+        elif quarter == 4:
             acts = ["rd3", "rd3", "produce", "market"] if not third_chip_done else ["produce", "market", "market", "market"]
+        elif quarter == 5:
+            acts = ["rd3", "rd3", "produce", "market"] if not third_chip_done else ["produce", "campaign", "market", "market"]
         else:
-            acts = ["rd3", "produce", "market", "market"] if not third_chip_done else ["produce", "market", "market", "market"]
+            acts = ["rd3", "produce", "market", "market"] if not third_chip_done else ["produce", "campaign", "market", "market"]
     elif seat.policy == "Spike":
         if quarter == 1:
             acts = ["rd3", "rd3", "rd3"]  # all-in on Q1 R&D (3 of the 4+ chip actions)
@@ -331,9 +348,9 @@ def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metric
         elif quarter == 3:
             acts = ["produce", "rd2", "rd2", "market"] if not has_two_lines else ["produce", "market", "market", "market"]
         elif quarter == 4:
-            acts = ["produce", "expand", "market", "market"]
+            acts = ["produce", "expand", "market", "campaign"]
         else:
-            acts = ["produce", "market", "market", "market"]
+            acts = ["produce", "campaign", "market", "market"]
 
     if SCRAP and seat.cash < CASH_RESERVE and seat.shelf > 0:
         n = min(seat.shelf, 2)
@@ -341,57 +358,67 @@ def run_actions(seat, quarter, market, customers, trend, age_tick, seats, metric
         seat.cash += n  # liquidate at 1c/widget to escape the bankruptcy dead-state
         metrics["scraps"] += n
 
+    visible = customers + pending  # public info: bots pre-position for incoming demand
     for act in acts[:execs]:  # exec cap is a hard guardrail — scripts are priority-ordered
         if act == "produce":
             do_produce(seat)
         elif act == "expand":
             do_expand(seat)
         elif act == "market":
-            place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics)
-            place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics)
+            place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
+            place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
         elif act == "campaign":
-            if place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics):
+            placed = place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
+            if placed and NUDGE:
                 target = set().union(*(l.chips for l in seat.lines))
                 new = nudge_toward(trend[0], target)
                 if new != trend[0]:
                     trend[0] = new
                     seat.nudges += 1
+            if quarter >= 2:  # creation unlocks from Q2; does not require the ad to land
                 for _ in range(CAMPAIGN_CREATES):
-                    seg = seat.seg_pref[0]
-                    band = PRICE_BANDS[seg]
-                    cid = int(metrics["cid"])
-                    if seg in ("B", "C"):
-                        wants = {attrs()[cid % len(attrs())]}
-                    else:
-                        pool = pairs_list()
-                        wants = set(pool[cid % len(pool)])
-                    metrics["cid"] += 1
-                    customers.append(Customer({"id": 1000 + cid, "segment": seg,
-                                               "wants": "".join(sorted(wants)),
-                                               "max_price": band[cid % len(band)]}))
-                    metrics["created_customers"] += 1
+                        seg = seat.seg_pref[0]
+                        band = PRICE_BANDS[seg]
+                        cid = int(metrics["cid"])
+                        metrics["cid"] += 1
+                        if seg in ("B", "C"):
+                            wants = {attrs()[rng.randrange(len(attrs()))]}
+                        elif CREATES_BIAS:
+                            own = sorted(set().union(*(l.chips for l in seat.lines)))
+                            first = own[rng.randrange(len(own))]
+                            rest = [a for a in attrs() if a != first]
+                            wants = {first, rest[rng.randrange(len(rest))]}
+                        else:
+                            pool = pairs_list()
+                            wants = set(pool[rng.randrange(len(pool))])
+                        # maturity delay: joins NEXT quarter's row, publicly visible
+                        pending.append(Customer({"id": 1000 + cid, "segment": seg,
+                                                 "wants": "".join(sorted(wants)),
+                                                 "max_price": band[rng.randrange(len(band))],
+                                                 "creator": seat.idx}))
+                        metrics["created_customers"] += 1
         elif act == "rd2":
             if not has_two_lines:
-                a = best_chip(Line(set(), 0), customers, seat.seg_pref[:2])
+                a = best_chip(Line(set(), 0), visible, seat.seg_pref[:2])
                 seat.lines.append(Line(a, seat.base_prices[1]))
                 has_two_lines = True
             elif len(seat.lines[1].chips) < 2:
-                a = best_chip(seat.lines[1], customers, seat.seg_pref[:2])
+                a = best_chip(seat.lines[1], visible, seat.seg_pref[:2])
                 if a:
                     seat.lines[1].chips.add(a)
             else:
-                place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics)  # line complete; spend on ads
+                place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
         elif act == "rd3":
             line = seat.lines[0]
             if len(line.chips) >= Line.MAX_CHIPS:
-                place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics)
+                place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
             elif line.chip3_progress == CHIP3_COST - 1 and seat.cash < CHIP3_CASH:
-                place_ad(seat, market, customers, trend, age_tick, leader_idx, metrics)  # can't afford completion
+                place_ad(seat, market, visible, trend, age_tick, leader_idx, metrics)
             else:
                 line.chip3_progress += 1
                 if line.chip3_progress >= CHIP3_COST:
                     seat.cash -= CHIP3_CASH
-                    a = best_chip(line, customers, seat.seg_pref[:2])
+                    a = best_chip(line, visible, seat.seg_pref[:2])
                     if a:
                         line.chips.add(a)
 
@@ -412,13 +439,11 @@ def resolve_income(seats, market, row, trend, quarter, variant, metrics):
                 ads = sum(1 for (si, _) in market[seg] if si == s.idx)
                 if ads < 1:
                     continue
-                covering = s.covers(cust)
+                maxp = cust.max_price + (TREND_PREMIUM if trend[0] in cust.wants else 0)
+                covering = [l for l in s.lines if sale_eligible(l, cust, maxp)]
                 if not covering:
                     continue
                 line = min(covering, key=lambda l: l.price)
-                maxp = cust.max_price + (TREND_PREMIUM if trend[0] in cust.wants else 0)
-                if line.price > maxp:
-                    continue
                 cands.append((line.price, -ads, order.index(s.idx), s))
             if cands:
                 cands.sort(key=lambda x: x[:3])
@@ -427,6 +452,10 @@ def resolve_income(seats, market, row, trend, quarter, variant, metrics):
                 winner.shelf -= 1
                 winner.sales += 1
                 sold_in_seg[winner.idx][seg] += 1
+                if cust.creator >= 0:
+                    metrics["created_served"] += 1
+                    if winner.idx == cust.creator:
+                        metrics["self_captured"] += 1
                 if price == 1:
                     metrics["price1_sales"] += 1
                 sold_ids.add(cust.id)
@@ -451,10 +480,12 @@ def run_game(seed, variant):
     metrics = defaultdict(float)
     age_tick = 0
 
+    pending = []  # created customers maturing into next quarter's row
     for q in range(1, QUARTERS + 1):
         if q > 1:
             trend[0] = trend_step(trend[0], 1)
-        row = carry + deck[q]
+        row = carry + pending + deck[q]
+        pending = []
         if LATE_INFLATION and q >= 5:
             for c in row:
                 c.max_price = min(6, c.max_price + LATE_INFLATION)
@@ -462,7 +493,7 @@ def run_game(seed, variant):
         set_prices(seats, q, metrics)
         execs = 3 if q <= 2 else 4
         for s in seats:
-            run_actions(s, q, market, row, trend, age_tick, seats, metrics, execs)
+            run_actions(s, q, market, row, trend, age_tick, seats, metrics, execs, pending, rng)
             age_tick += execs
         carry = resolve_income(seats, market, row, trend, q, variant, metrics)
         for s in seats:
@@ -516,9 +547,13 @@ def main():
     ap.add_argument("--line-upkeep", type=int, default=0)
     ap.add_argument("--campaign-creates", type=int, default=0, help="Campaign adds N fresh customers to its segment")
     ap.add_argument("--late-inflation", type=int, default=0, help="Q5+ customers pay +N (cap 6)")
+    ap.add_argument("--creates-bias", type=int, default=0, help="creator picks 1 want of created customers")
+    ap.add_argument("--nudge", type=int, default=1, help="0 = v0.5 proposal (Campaign: 1 ad + create, no nudge)")
+    ap.add_argument("--ad-slots", type=int, default=3)
+    ap.add_argument("--near-miss", type=int, default=0, help="1=all customers, 2=only 2+-want")
     args = ap.parse_args()
 
-    global CHIP3_COST, PROD_COST, AD_COST, RETALIATE, SCRAP, TREND_PREMIUM, MBOOST, PLAYERS, SHELF_CAP, SALE_CAP, NATTRS, EWANTS, CHIP3_CASH, TREND_START, START_CASH, LINE_UPKEEP, CAMPAIGN_CREATES, LATE_INFLATION
+    global CHIP3_COST, PROD_COST, AD_COST, RETALIATE, SCRAP, TREND_PREMIUM, MBOOST, PLAYERS, SHELF_CAP, SALE_CAP, NATTRS, EWANTS, CHIP3_CASH, TREND_START, START_CASH, LINE_UPKEEP, CAMPAIGN_CREATES, LATE_INFLATION, CREATES_BIAS, NUDGE, AD_SLOTS, NEAR_MISS
     CHIP3_COST = args.chip3_cost
     PROD_COST = args.prodcost
     AD_COST = args.adcost
@@ -537,6 +572,10 @@ def main():
     LINE_UPKEEP = args.line_upkeep
     CAMPAIGN_CREATES = args.campaign_creates
     LATE_INFLATION = args.late_inflation
+    CREATES_BIAS = args.creates_bias
+    NUDGE = bool(args.nudge)
+    AD_SLOTS = args.ad_slots
+    NEAR_MISS = args.near_miss
     PRICE_BANDS.update({"B": [int(x) for x in args.bband.split(",")],
                         "M": [int(x) for x in args.mband.split(",")],
                         "E": [int(x) for x in args.eband.split(",")]})
@@ -570,7 +609,8 @@ def main():
     print(f"leader-targeted bumps/game:  {total['leader_bumps'] / n:.2f}")
     print(f"scrap liquidations/game:     {total['scraps'] / n:.2f}")
     print(f"sale-cap blocks/game:        {total['cap_blocks'] / n:.2f}")
-    print(f"campaign-created customers:  {total['created_customers'] / n:.2f}")
+    print(f"created/game: {total['created_customers'] / n:5.1f}  served {total['created_served'] / n:5.1f}  "
+          f"self-captured {total['self_captured'] / n:5.1f}")
     print(f"(win-rate 95% CI half-width +/-{ci:.1%} at p=0.5)")
 
 

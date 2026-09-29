@@ -103,10 +103,10 @@ inside the euro band.
 ## 9. Full knob sheet
 
 Production cost **2** · capacity **2→5** / expand **4c** · shelf **6** ·
-ad cost **1** · ad slots **3** · trend premium **+1** · 3rd chip **3
-actions** (v0.2, sim-validated) · execs **3** (+1 at Q3) · start **10c** ·
-quarter curve **5/7/9/11/12/13** · segment price bands · deck size per
-count **57/74**.
+ad cost **1** · ad slots **4** (v0.5; was 3) · trend premium **+1** ·
+3rd chip **4 actions + 6c** (v0.4, sim-validated knife-edge) · execs **3**
+(+1 at Q3) · start **10c** · quarter curve **5/7/9/11/12/13** · segment
+price bands B 2–3 / M 3–5 / E 4–5 (v0.3) · deck size per count **57/76**.
 
 Sim verdicts (see `05-sim-results-v0.1.md`): 3rd chip at 2 actions was a
 dominant strategy (80% bot win rate); ad cost 0 unleashes the coverage
@@ -124,5 +124,12 @@ Iteration-3 verdicts (see `07-sim-results-iter3.md`): the real lever is
 cash — **3rd chip = 4 actions + 6c** (knife-edge 5/6/7c = 86/63/0% Spike).
 Rejected: sale-cap, 5 attributes, E-wants-3, random trend, line upkeep,
 campaign-creates, prodcost 1 (×3), late inflation, start-cash 14.
-Deflation is structural (faucet ≈ cost floor); options: ×5 presentation
-scaling, demand-creation redesign (v0.5), or accept brutality.
+Deflation is structural (faucet ≈ cost floor).
+
+Iteration-4 verdicts (see `09-sim-results-v0.5.md`): demand creation
+falsified (converts ~10% through the funnel; volume was never the choke).
+**Ad slots 3 → 4 adopted (v0.5)** — balance ladder 3/4/5 slots =
+Spike 65/47/35%, Discounter 8/31/46%; 4 = sweet spot (47/31/22, Q2-lock
+34%). Near-miss coverage rules rejected in all forms (kills the attribute
+game). Economy +25% via serve rate; tight by design; feel fix = ×5
+presentation rescale.
