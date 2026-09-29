@@ -1,5 +1,5 @@
 {
-  description = "finding-fit";
+  description = "shelf-wars";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 

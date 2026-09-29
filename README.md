@@ -1,4 +1,4 @@
-# finding-fit
+# shelf-wars
 
 A collection of expert **board game design skills** for [Pi](https://github.com/badlogic/pi-mono), covering the full journey of designing a great and commercially successful tabletop game:
 
@@ -28,7 +28,7 @@ Each skill is a directory with an always-loaded `SKILL.md` (core principles, pro
 
 Skills live in **`.agents/skills/`** — the [Agent Skills](https://agentskills.io/specification) standard location — and load through three redundant mechanisms:
 
-1. **Project auto-discovery** (no install): Pi discovers project `.agents/skills/` from the working directory through its ancestors, stopping at the repo root. Clone, `cd finding-fit`, run `pi`. Other harnesses implementing the Agent Skills spec use the same location.
+1. **Project auto-discovery** (no install): Pi discovers project `.agents/skills/` from the working directory through its ancestors, stopping at the repo root. Clone, `cd shelf-wars`, run `pi`. Other harnesses implementing the Agent Skills spec use the same location.
 2. **Project settings** (belt and suspenders): `.pi/settings.json` explicitly declares the resource root for Pi versions/configurations where explicit resource lists are preferred:
    ```json
    { "skills": [".agents/skills"] }
@@ -38,8 +38,8 @@ Skills live in **`.agents/skills/`** — the [Agent Skills](https://agentskills.
    "pi": { "skills": [".agents/skills"] }
    ```
    ```bash
-   pi install git:github.com/<your-remote>/finding-fit   # remote
-   pi install ./path/to/finding-fit                      # local checkout
+   pi install git:github.com/<your-remote>/shelf-wars   # remote
+   pi install ./path/to/shelf-wars                      # local checkout
    ```
 
 **Project trust:** project `.agents/skills` and `.pi/settings.json` are trust-protected resources. On first interactive run in this repo, Pi prompts for project trust — approve it (and save the decision with `/trust`). Headless runs (`pi --print`, `--mode json/rpc`) cannot prompt: pass `--approve` or the skills are silently skipped. If you add or edit skills mid-session, run `/reload`.

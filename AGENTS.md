@@ -1,4 +1,4 @@
-# finding-fit
+# shelf-wars
 
 This repo is a Pi package / Agent Skills collection of expert board game design
 skills. The skills live in `.agents/skills/<skill-name>/SKILL.md` (with
